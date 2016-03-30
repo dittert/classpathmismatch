@@ -9,20 +9,57 @@ repositories {
   mavenCentral()
 }
 
+// applied through custom plugin
+
+configurations {
+  xtestCompile.extendsFrom testCompile
+  xtestRuntime.extendsFrom testRuntime
+}
+
+sourceSets {
+  xtest {
+    java {
+      compileClasspath += main.output + test.output
+      runtimeClasspath += main.output + test.output
+      srcDir file('src/xtest/java')
+    }
+    resources.srcDir file('src/xtest/resources')
+  }
+}
+
+def t = project.tasks.create("xtest", Test) {
+  testClassesDir = sourceSets.xtest.output.classesDir
+  classpath = sourceSets.xtest.runtimeClasspath
+}
+
+tasks['check'].dependsOn t
+t.mustRunAfter tasks['test']
+
+tasks.withType(Test) {
+  reports.html.destination = file("${reporting.baseDir}/${name}")
+}
+
+// end of plugin modifications
+
 dependencies {
   compile gradleApi()
   compile localGroovy()
 
   testCompile group: 'junit', name: 'junit', version: '4.12'
   testCompile group: 'com.sparkjava', name: 'spark-core', version: '2.3'
+
+  xtestCompile group: 'com.sparkjava', name: 'spark-core', version: '2.3'
+  xtestCompile group: 'junit', name: 'junit', version: '4.12'
 }
 
+
+
 sourceSets {
-  test {
-    def newClasspath = configurations.testCompile - files("$gradle.gradleHomeDir/lib/plugins/servlet-api-2.5-20081211.jar")
+  xtest {
+    def newClasspath = configurations.xtestCompile - files("$gradle.gradleHomeDir/lib/plugins/servlet-api-2.5-20081211.jar")
     compileClasspath = newClasspath
-    runtimeClasspath = newClasspath + test.output
-//    println compileClasspath.getFiles()
+    runtimeClasspath = newClasspath + xtest.output
   }
 }
 
+logger.lifecycle(sourceSets.xtest.runtimeClasspath.getFiles().join("\n"))
